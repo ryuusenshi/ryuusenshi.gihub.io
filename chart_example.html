@@ -1,0 +1,219 @@
+<!doctype html>
+<html>
+
+<head>
+	<title>Toxicity threshold</title>
+	<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+  <style>
+  #custom-handle {
+    width: 3em;
+    height: 1.6em;
+    top: 50%;
+    margin-top: -.8em;
+    text-align: center;
+    line-height: 1.6em;
+  }
+  </style>
+  <!--<script src="https://code.jquery.com/ui/core.js"></script>
+  <script src="https://code.jquery.com/ui/widget.js"></script>
+  <script src="https://code.jquery.com/ui/mouse.js"></script>
+  <script src="https://code.jquery.com/ui/slider.js"></script>-->
+	<script src="https://www.chartjs.org/dist/2.9.4/Chart.min.js"></script>
+    <!--<script src="https://www.chartjs.org/samples/latest/utils.js"></script>-->
+    <!--<script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/ui/3.3.1/jquery-ui.js"></script>-->
+  <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <script src="http://typeiii.github.io/jquery-csv/src/jquery.csv.js"></script>
+    <script src="./solution.js"></script>
+	<style>
+		canvas {
+			-moz-user-select: none;
+			-webkit-user-select: none;
+			-ms-user-select: none;
+		}
+	</style>
+	<script>
+
+
+    var config = {
+			type: 'line',
+			data: {
+				//labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July'],
+				datasets: [                
+                {
+					label: 'Toxicity threshold',
+					backgroundColor: "#000000",
+					borderColor: "#000000",
+					data: [
+					],
+					fill: false,
+                    pointRadius: 0,
+                    borderDash: [5, 5]
+				},
+                {
+					label: 'Drug concentration',
+					backgroundColor: "#FF0000",
+					borderColor: "#FF0000",
+					data: [
+					],
+					fill: false,
+                    pointRadius: 0
+				}]
+			},
+			options: {
+				responsive: true,
+				title: {
+					display: true,
+					text: 'Liver concentration'
+				},
+				tooltips: {
+					mode: 'index',
+					intersect: false,
+				},
+				hover: {
+					mode: 'nearest',
+					intersect: true
+				},
+				scales: {
+					xAxes: [{
+						display: true,
+						scaleLabel: {
+							display: true,
+							labelString: 'time'
+						}
+					}],
+					yAxes: [{
+						display: true,
+						scaleLabel: {
+							display: true,
+							labelString: 'CL'
+						}
+					}]
+				}
+			}
+		};
+
+		function selectDose(h) {
+			hs = $('#slider').slider()
+			hs.slider('option', 'value',h);
+			hs.slider('option','slide')
+				   .call(hs,null,{ handle: $('.ui-slider-handle', hs), value: h });
+		}
+
+		function selectScenario(value) {
+			if (value=="1") {
+				selectDose(3);
+			}
+
+			if (value=="2") {
+				selectDose(5);
+			}
+		};
+
+		$(document).ready(function() {
+	        data = $.csv.toArrays(data);
+            config['data']['labels'] = data[0];
+            config['data']['datasets'][0]['data'] = data[13];
+            config['data']['datasets'][1]['data'] = data[1];
+ 
+            var ctx = document.getElementById('canvas').getContext('2d');
+            window.myLine = new Chart(ctx, config);	
+
+			var handle = $( "#custom-handle" );
+			$( "#speed" ).selectmenu({
+				  change: function( event, eData ) {
+					var div_factor = 1;
+
+					if (eData.item.index == 0) {
+						div_factor = 3;
+					}
+					var tox = [];
+					for (var i=0; i<data[13].length; i++){
+						tox[i] = data[13][i] / div_factor;
+					}
+					var concLine = window.myLine.data.datasets.pop();
+					var toxLine = window.myLine.data.datasets.pop();
+					toxLine['data'] = tox;
+
+					window.myLine.data.datasets.push(toxLine);
+					window.myLine.data.datasets.push(concLine);
+					window.myLine.update();
+	
+					
+				  }
+			});
+
+			$( "#slider" ).slider({
+				  min: 1,
+				  max: 12,
+				  range: "min",
+
+				  animate: true,
+				 
+				  create: function() {
+					handle.text( $( this ).slider( "value" ) );
+				  },
+				  slide: function( event, ui ) {
+					handle.text( ui.value );
+					var nd = {
+						label: 'blackness',
+						backgroundColor: '#FF0000',
+						borderColor: '#FF0000',
+						data: data[ui.value],
+						fill: false,
+						pointRadius: 0
+					}
+
+					window.myLine.data.datasets.pop();
+					window.myLine.data.datasets.push(nd);
+					window.myLine.update();
+				  }
+			});
+	    });
+	</script>
+</head>
+
+<body>
+		<fieldset style="width:300px; height:117px; display:inline;">
+			<legend>Scenario</legend>
+			<select id="framework" multiple style="width:100%; height: 100%;" onchange="selectScenario(this.value);">
+				<option value="1">Over toxicity threshold</option>
+				<option value="2">Below toxicity threshold</option>
+				<option value="3" selected>Custom...</option>
+			</select>
+		</fieldset>
+		<fieldset style="width:400px; display:inline;">
+		<legend>Simulation options: </legend>
+		<table>
+			<tr style="height:60px;">
+				<td>
+					<div>Dose every X days:</div> 
+				</td>
+				<td style="width:100px; margin-left:10px;">
+					<div id="slider" style="margin-left:10px;">
+						<div id="custom-handle" class="ui-slider-handle"></div>
+					</div>
+				</td>
+			</tr>
+			<tr>
+				<td>
+					Threshold level:
+				</td>
+				<td>
+					<select name="speed" id="speed">
+					  <option>Low</option>
+					  <option selected="selected">High</option>
+					</select>
+				</td>
+			</tr>
+		</table>
+	</fieldset>
+	<div style="width:75%;">
+		<canvas id="canvas"></canvas>
+	</div>
+	<script>
+    </script>
+</body>
+
+</html>
